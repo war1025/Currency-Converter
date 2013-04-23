@@ -3,6 +3,7 @@ const Main = imports.ui.main;
 const Search = imports.ui.search;
 const SearchDisplay = imports.ui.searchDisplay;
 const IconGrid = imports.ui.iconGrid;
+const Lang = imports.lang;
 const GLib = imports.gi.GLib;
 const Soup = imports.gi.Soup;
 
@@ -13,11 +14,9 @@ const HOUR = 3600 * 1000000;
 
 let currencyProvider = "";
 
-function CalcResult(result) {
-    this._init(result);
-}
+const CurrancyResult = new Lang.Class({
+    Name: 'CurrancyResult',
 
-CalcResult.prototype = {
     _init: function(resultMeta) {
 
         this.actor = new St.Bin({ style_class: 'contact',
@@ -32,8 +31,7 @@ CalcResult.prototype = {
 
         outer.add(content, {x_fill: true, y_fill: false})
 
-        let icon = new St.Icon({ icon_type: St.IconType.FULLCOLOR,
-                                 icon_size: ICON_SIZE,
+        let icon = new St.Icon({ icon_size: ICON_SIZE,
                                  icon_name: 'accessories-calculator',
                                  style_class: 'contact-icon' });
 
@@ -59,20 +57,17 @@ CalcResult.prototype = {
         result.add(exprLabel, { x_fill: false, x_align: St.Align.START });
         result.add(resultLabel, { x_fill: false, x_align: St.Align.START });
         outer.add(thanksLabel, { x_fill: false, x_align: St.Align.MIDDLE });
-
+        result.set_width(400);
     }
 
-};
+});
 
-function CurrencyProvider() {
-    this._init.apply(this, arguments);
-}
-
-CurrencyProvider.prototype = {
-    __proto__: Search.SearchProvider.prototype,
+const CurrencyProvider = new Lang.Class({
+    Name: 'CurrencyProvider',
+    Extends: Search.SearchProvider,
 
     _init: function(title) {
-        Search.SearchProvider.prototype._init.call(this, title);
+        this.parent(title);
     },
 
     /**
@@ -166,7 +161,11 @@ CurrencyProvider.prototype = {
             let expr = [result.amt, result.from, "to", result.to].join(" ");
             let conversion = result.amt * this._rates[result.to] / this._rates[result.from];
 
-            return [{ 	'expr'  : expr, 'result': conversion.toFixed(2) + "" }];
+            this.searchSystem.pushResults(
+                this,
+                [{'expr': expr, 'result': conversion.toFixed(2)}]
+            );
+            return [{ 'expr' : expr, 'result': conversion.toFixed(2) }];
         }
 
         return [];
@@ -176,16 +175,17 @@ CurrencyProvider.prototype = {
         return this.getInitialResultSet(terms);
     },
 
-    getResultMetas: function(result) {
+    getResultMetas: function(result, callback) {
         let metas = [];
         for(let i = 0; i < result.length; i++) {
             metas.push({'id' : i, 'result' : result[i].result, 'expr' : result[i].expr});
         }
+        callback(metas);
         return metas;
     },
 
     createResultActor: function(resultMeta, terms) {
-        let result = new CalcResult(resultMeta);
+        let result = new CurrancyResult(resultMeta);
         return result.actor;
     },
 
@@ -204,7 +204,7 @@ CurrencyProvider.prototype = {
         }
         return true;
     }
-}
+});
 
 function init() {
     currencyProvider = new CurrencyProvider('CURRENCY CONVERTER');
