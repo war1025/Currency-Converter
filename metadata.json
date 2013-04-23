@@ -1,5 +1,5 @@
 {
-	"shell-version": ["3.4"],
+	"shell-version": ["3.6", "3.8"],
 	"uuid": "currency-converter@wrowclif.org",
 	"name": "Currency Converter",
 	"description": "Convert currency from the overview search. In the form \"x this to that\", ex. \"6 USD to EUR\""
