@@ -14,24 +14,30 @@ const HOUR = 3600 * 1000000;
 
 let currencyProvider = "";
 
-const CurrancyResult = new Lang.Class({
-    Name: 'CurrancyResult',
+const CurrencyResultIconBin = new Lang.Class({
+    Name: 'CurrencyResultIconBin',
 
-    _init: function(resultMeta) {
-
+    _init: function(result) {
+        this._result = result;
         this.actor = new St.Bin({ style_class: 'contact',
                                   reactive: true,
                                   track_hover: true });
+        this.icon = new IconGrid.BaseIcon(this._result.name,
+                                          { showLabel: false,
+                                            createIcon: Lang.bind(this, this.createIcon) } ); 
+        this.actor.child = this.icon.actor;
+        this.actor.label_actor = this.icon.label;
+    },  
 
+    createIcon: function(size) {
         let outer = new St.BoxLayout({ style_class: 'contact-content',
                                        vertical: true});
 
         let content = new St.BoxLayout( { vertical: false });
-        this.actor.set_child(outer);
 
         outer.add(content, {x_fill: true, y_fill: false})
 
-        let icon = new St.Icon({ icon_size: ICON_SIZE,
+        let icon = new St.Icon({ icon_size: size,
                                  icon_name: 'accessories-calculator',
                                  style_class: 'contact-icon' });
 
@@ -45,9 +51,9 @@ const CurrancyResult = new Lang.Class({
 
         content.add(result, { x_fill: true, x_align: St.Align.START });
 
-        let exprLabel = new St.Label({ text: resultMeta.expr,
+        let exprLabel = new St.Label({ text: this._result.expr,
                                          style_class: 'result-expression' });
-        let resultLabel = new St.Label({ text: resultMeta.result,
+        let resultLabel = new St.Label({ text: this._result.name,
                                          style_class: 'result-result' });
 
 		// Terms of use for timegenie.com feed say we can use it as long as we thank them
@@ -58,9 +64,10 @@ const CurrancyResult = new Lang.Class({
         result.add(resultLabel, { x_fill: false, x_align: St.Align.START });
         outer.add(thanksLabel, { x_fill: false, x_align: St.Align.MIDDLE });
         result.set_width(400);
-    }
 
-});
+        return outer;
+    }
+})
 
 const CurrencyProvider = new Lang.Class({
     Name: 'CurrencyProvider',
@@ -161,11 +168,11 @@ const CurrencyProvider = new Lang.Class({
             let expr = [result.amt, result.from, "to", result.to].join(" ");
             let conversion = result.amt * this._rates[result.to] / this._rates[result.from];
 
-            this.searchSystem.pushResults(
+            this.searchSystem.setResults(
                 this,
-                [{'expr': expr, 'result': conversion.toFixed(2)}]
+                [{'expr': expr, 'name': conversion.toFixed(2)}]
             );
-            return [{ 'expr' : expr, 'result': conversion.toFixed(2) }];
+            return [{ 'expr' : expr, 'name': conversion.toFixed(2) }];
         }
 
         return [];
@@ -175,27 +182,23 @@ const CurrencyProvider = new Lang.Class({
         return this.getInitialResultSet(terms);
     },
 
-    getResultMetas: function(result, callback) {
+    filterResults: function (results, max) {
+        return results.slice(0, max)
+    },
+
+    getResultMetas: function(results, callback) {
         let metas = [];
-        for(let i = 0; i < result.length; i++) {
-            metas.push({'id' : i, 'result' : result[i].result, 'expr' : result[i].expr});
+        for(let i = 0; i < results.length; i++) {
+            metas.push({'id' : i, 'name' : results[i].name, 'expr' : results[i].expr});
         }
         callback(metas);
         return metas;
     },
 
-    createResultActor: function(resultMeta, terms) {
-        let result = new CurrancyResult(resultMeta);
-        return result.actor;
-    },
 
-    createResultContainerActor: function() {
-        let grid = new IconGrid.IconGrid({ rowLimit: MAX_SEARCH_RESULTS_ROWS,
-                                           xAlign: St.Align.START });
-        grid.actor.style_class = 'contact-grid';
-
-        let actor = new SearchDisplay.GridSearchResults(this, grid);
-        return actor;
+    createResultObject: function(resultMeta, terms) {
+        let result = new CurrencyResultIconBin(resultMeta);
+        return result;
     },
 
     activateResult: function(resultId) {
